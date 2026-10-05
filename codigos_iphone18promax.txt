@@ -1,0 +1,7 @@
+Codigos de parte (Apple Espana) iPhone 18 Pro Max 512 GB, leidos de apple.com/es:
+  Burdeos  MJXV4QL/A   <- el que vigila config.json
+  Negro    MJXT4QL/A
+  Azul     MJXW4QL/A   (Glacier / azul glacial)
+  Plata    MJXU4QL/A
+Para vigilar otro modelo, anade otro bloque en "products" de config.json.
+Tiendas: Passeig de Gracia = R368, La Maquinista = R406

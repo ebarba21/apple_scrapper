@@ -1,0 +1,18 @@
+{
+  "location": "Barcelona",
+  "intervalo_segundos": 60,
+  "avisar_si_se_agota": false,
+  "latido_diario_hora": 9,
+  "zona_horaria": "Europe/Madrid",
+  "stores": [
+    {"store_number": "R368", "name": "Passeig de Gràcia"},
+    {"store_number": "R406", "name": "La Maquinista"}
+  ],
+  "products": [
+    {
+      "name": "iPhone 18 Pro Max 512 GB Burdeos",
+      "part_number": "MJXV4QL/A",
+      "buy_url": "https://www.apple.com/es/shop/buy-iphone/iphone-18-pro/6.9-pulgadas-512-gb-burdeos"
+    }
+  ]
+}
