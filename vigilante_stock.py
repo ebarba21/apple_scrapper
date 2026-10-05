@@ -6,7 +6,7 @@ un producto pasa de "sin stock" a "con stock". Sin dependencias (solo Python 3.8
 
 Funciona en dos sitios con el mismo codigo:
   - En tu PC:         python vigilante_stock.py            (bucle infinito)
-  - En GitHub Actions: python vigilante_stock.py --loop 33  (bucle de 33 min; lo relanza el cron)
+  - En GitHub Actions: python vigilante_stock.py --check    (una sola pasada; la lanza el cron cada ~5 min)
 
 Secretos (NUNCA en config.json, que se sube a GitHub):
   variables de entorno TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID  (Actions: Settings > Secrets)
@@ -101,6 +101,7 @@ def load_state():
     st.setdefault("stock", {})
     st.setdefault("heartbeat", "")
     st.setdefault("blocked", False)
+    st.setdefault("errors", 0)
     return st
 
 
@@ -245,16 +246,18 @@ def run_loop(cfg, minutes=None):
                 log("Conexion con Apple recuperada.")
                 if state["blocked"]:
                     telegram_send(cfg, "✅ El vigilante vuelve a poder consultar a Apple.")
-            errors, state["blocked"] = 0, False
+            errors, state["blocked"], state["errors"] = 0, False, 0
             maybe_heartbeat(cfg, state, res)
             save_state(state)
             log("OK -> " + " | ".join(f"{s}: {'SI' if ok else 'no'}" for (_, s, ok, _) in res.values()))
             wait = interval + random.uniform(-0.15, 0.15) * interval
         except AppleBlocked as e:
             errors += 1
+            state["errors"] = min(state.get("errors", 0) + 1, 3)  # persistente: sobrevive entre ejecuciones sueltas
+            save_state(state)
             wait = min(600, 60 * 2 ** errors) if deadline else min(1800, 300 * 2 ** (errors - 1))
             log(f"No se pudo consultar ({e}). Reintento en {wait / 60:.0f} min. NO cuenta como 'sin stock'.")
-            if errors >= 3 and not state["blocked"]:
+            if state["errors"] >= 3 and not state["blocked"]:
                 state["blocked"] = True
                 telegram_send(cfg, f"⚠️ El vigilante no puede consultar a Apple ({html.escape(str(e))}). Sigo reintentando.")
                 save_state(state)
@@ -309,6 +312,7 @@ def main():
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--notify", action="store_true")
     ap.add_argument("--loop", type=float, metavar="MINUTOS")
+    ap.add_argument("--check", action="store_true", help="una sola pasada completa (alertas, latido, aviso de bloqueo) y salir; es lo que usa el cron")
     ap.add_argument("--test-telegram", action="store_true")
     ap.add_argument("--chat-id", action="store_true")
     args = ap.parse_args()
@@ -324,6 +328,9 @@ def main():
     if IN_ACTIONS and not (cfg.get("_token") and cfg.get("_chat")):
         print("ERROR: faltan los secretos TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID en GitHub (Settings > Secrets and variables > Actions).")
         return 2
+    if args.check:
+        run_loop(cfg, 0.001)
+        return 0
     run_loop(cfg, args.loop)
     return 0
 

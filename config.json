@@ -1,6 +1,6 @@
 {
   "location": "Barcelona",
-  "intervalo_segundos": 60,
+  "intervalo_segundos": 120,
   "avisar_si_se_agota": false,
   "latido_diario_hora": 9,
   "zona_horaria": "Europe/Madrid",

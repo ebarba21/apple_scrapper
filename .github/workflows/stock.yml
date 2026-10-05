@@ -2,20 +2,15 @@ name: Vigilante stock iPhone
 
 on:
   schedule:
-    # Cada 30 min se lanza un turno de ~33 min; la concurrencia hace que se encadenen
-    # sin solaparse -> consulta casi continua (cada ~60 s). Minutos pico de GitHub evitados.
-    - cron: '7,37 * * * *'
-  workflow_dispatch:
-    inputs:
-      minutos:
-        description: 'Minutos de vigilancia (0 = una sola comprobación de diagnóstico con aviso a Telegram)'
-        default: '0'
+    # Una comprobacion ligera (~15 s) cada ~5 min (minimo de GitHub), en minutos
+    # desplazados para evitar las horas punta (:00, :30).
+    - cron: '2-57/5 * * * *'
+  workflow_dispatch:   # ejecucion manual = diagnostico (manda un mensaje a Telegram)
 
 # Necesario para commitear state.json / history.csv
 permissions:
   contents: write
 
-# Un solo turno a la vez; el siguiente espera en cola (no se cancela el que está vigilando)
 concurrency:
   group: apple-stock
   cancel-in-progress: false
@@ -23,23 +18,22 @@ concurrency:
 jobs:
   vigilar:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
-      - name: Vigilar stock
+      - name: Comprobar stock
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          MINUTOS: ${{ github.event.inputs.minutos || '33' }}
         run: |
-          if [ "$MINUTOS" = "0" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python3 vigilante_stock.py --once --notify
           else
-            python3 vigilante_stock.py --loop "$MINUTOS"
+            python3 vigilante_stock.py --check
           fi
 
-      # Solo hay commit cuando cambia el estado (stock / latido diario): muy pocos
+      # Solo hay commit cuando cambia el estado (stock / latido diario / errores): muy pocos
       - name: Guardar estado e historial
         if: always()
         run: |
