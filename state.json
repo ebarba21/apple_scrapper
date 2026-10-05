@@ -1,1 +1,8 @@
-{}
+{
+  "blocked": false,
+  "heartbeat": "",
+  "stock": {
+    "MJXV4QL/A|R368": false,
+    "MJXV4QL/A|R406": false
+  }
+}
