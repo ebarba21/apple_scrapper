@@ -1,0 +1,55 @@
+name: Vigilante stock iPhone
+
+on:
+  schedule:
+    # Cada 30 min se lanza un turno de ~33 min; la concurrencia hace que se encadenen
+    # sin solaparse -> consulta casi continua (cada ~60 s). Minutos pico de GitHub evitados.
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+    inputs:
+      minutos:
+        description: 'Minutos de vigilancia (0 = una sola comprobación de diagnóstico con aviso a Telegram)'
+        default: '0'
+
+# Necesario para commitear state.json / history.csv
+permissions:
+  contents: write
+
+# Un solo turno a la vez; el siguiente espera en cola (no se cancela el que está vigilando)
+concurrency:
+  group: apple-stock
+  cancel-in-progress: false
+
+jobs:
+  vigilar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vigilar stock
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          MINUTOS: ${{ github.event.inputs.minutos || '33' }}
+        run: |
+          if [ "$MINUTOS" = "0" ]; then
+            python3 vigilante_stock.py --once --notify
+          else
+            python3 vigilante_stock.py --loop "$MINUTOS"
+          fi
+
+      # Solo hay commit cuando cambia el estado (stock / latido diario): muy pocos
+      - name: Guardar estado e historial
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state.json history.csv
+          if git diff --staged --quiet; then
+            echo "Sin cambios de estado."
+          else
+            git commit -m "chore: estado del stock [skip ci]"
+            git pull --rebase --autostash
+            git push
+          fi
