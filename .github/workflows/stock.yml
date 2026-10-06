@@ -1,13 +1,13 @@
-name: Vigilante stock iPhone
+name: Vigilante stock iPhone (respaldo manual)
 
+# La vigilancia automatica la hace el Worker de Cloudflare (cron cada 2 min).
+# Este workflow queda solo como diagnostico/respaldo: se lanza a mano desde Actions > Run workflow.
+# Para volver a activarlo como respaldo automatico, anade de nuevo:
+#   schedule:
+#     - cron: '2-57/5 * * * *'
 on:
-  schedule:
-    # Una comprobacion ligera (~15 s) cada ~5 min (minimo de GitHub), en minutos
-    # desplazados para evitar las horas punta (:00, :30).
-    - cron: '2-57/5 * * * *'
-  workflow_dispatch:   # ejecucion manual = diagnostico (manda un mensaje a Telegram)
+  workflow_dispatch:
 
-# Necesario para commitear state.json / history.csv
 permissions:
   contents: write
 
@@ -26,14 +26,8 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            python3 vigilante_stock.py --once --notify
-          else
-            python3 vigilante_stock.py --check
-          fi
+        run: python3 vigilante_stock.py --once --notify
 
-      # Solo hay commit cuando cambia el estado (stock / latido diario / errores): muy pocos
       - name: Guardar estado e historial
         if: always()
         run: |
